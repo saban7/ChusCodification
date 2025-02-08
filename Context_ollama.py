@@ -14,7 +14,7 @@ file_path = '/Users/sabanov/Desktop/Codification_ChusDataSet/Codebook.xlsx'
 
 # Load sheets using pandas
 codes_sheet = pd.read_excel(file_path, sheet_name="Codes", header=None)
-codif_sheet = pd.read_excel(file_path, sheet_name="coding", header=None)
+codif_sheet = pd.read_excel(file_path, sheet_name="Context", header=None)
 
 # Extract code definitions
 definitions_mapping = {
@@ -55,10 +55,10 @@ def generate_summary(history):
 
 # Load workbook for writing results
 workbook = load_workbook(file_path)
-if "coding" not in workbook.sheetnames:
+if "Context" not in workbook.sheetnames:
     raise ValueError("❌ Sheet 'Coding' not found in the Excel file!")
 
-workbook_sheet = workbook["coding"]
+workbook_sheet = workbook["Context"]
 
 # Define column indices
 description_col = 3  # Column D
@@ -131,7 +131,7 @@ for code_idx, code_col in enumerate(code_columns):
         print(f"\n🤖 Ollama prompt: {prompt}\n")
 
         data = {
-            "model": "llama3.3:70b",
+            "model": "llama3",
             "prompt": prompt,
             "stream": False
         }
