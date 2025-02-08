@@ -187,7 +187,7 @@ for code_idx, code_col in enumerate(code_columns):
             attempt += 1
             time.sleep(5)
 
-        time.sleep(1)
+#        time.sleep(1)
 
 workbook.save(file_path)
 workbook.close()

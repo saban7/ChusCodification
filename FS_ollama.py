@@ -177,7 +177,7 @@ for code_idx, code_col in enumerate(code_columns):
             attempt += 1
             time.sleep(5)  # Wait 5s before retrying if failed
 
-        time.sleep(1)  # Wait 1s between requests
+#        time.sleep(1)  # Wait 1s between requests
 
 # 🔹 Ensure the workbook is properly saved and closed at the end
 workbook.save(file_path)
