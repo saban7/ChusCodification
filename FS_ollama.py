@@ -11,7 +11,7 @@ MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
 
 # Load the Excel file
-file_path = '/Users/sabanov/Desktop/Codification_ChusDataSet/Codebook.xlsx'
+file_path = '/home/msaban/ChusCodification/Codebook.xlsx'
 
 # Load sheets using pandas
 codes_sheet = pd.read_excel(file_path, sheet_name="Codes", header=None)
