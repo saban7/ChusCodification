@@ -5,6 +5,10 @@ import json
 from openpyxl import load_workbook
 from bs4 import BeautifulSoup
 from difflib import get_close_matches
+import time
+from datetime import datetime
+
+Starting_time = datetime.now()
 
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
@@ -29,7 +33,7 @@ examples_mapping = {
 }
 
 # Get codes from "Codification" sheet (Columns F, G, H → indices 5,6,7)
-code_columns = [5, 6, 7]
+code_columns = list(range(5, 18))
 codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
 
 # Function to find best match
@@ -79,6 +83,19 @@ for code_idx, code_col in enumerate(code_columns):
     print(f"📝 Definition: {code_definition}")
     print(f"📚 Example: {code_example}\n")
 
+    # Reset Ollama context at the start of each column
+    system_prompt = "Forget all previous instructions and start fresh."
+    reset_data = {
+        "model": "llama3.3:70b",
+        "prompt": system_prompt,
+        "temperature": 0.0,
+        "stream": False
+    }
+
+    # Send a system reset request to Ollama before starting a new column
+    requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=reset_data)
+    print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
+
     # Process each row
     for i in range(1, 284):
         item_description = codif_sheet.iloc[i, description_col]
@@ -122,7 +139,7 @@ for code_idx, code_col in enumerate(code_columns):
             f"Please review the provided text and code it based on the construct: `{matched_code_name}`. "
             f"The definition of this construct is `{code_definition}`. "
             f"Here you have some examples `{code_example}`. "
-            f"Previously seen related texts: `{summary}` "
+            f"Here you have the context: `{summary}` "
             f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
             f"or a '0' if it does not. Your response should only be '1' or '0'. "
             f"Text: `{text_for_prompt}`"
@@ -131,8 +148,9 @@ for code_idx, code_col in enumerate(code_columns):
         print(f"\n🤖 Ollama prompt: {prompt}\n")
 
         data = {
-            "model": "llama3.3:70b",
+            "model": "llama3",
             "prompt": prompt,
+            "temperature":0.0,
             "stream": False
         }
 
@@ -172,4 +190,7 @@ for code_idx, code_col in enumerate(code_columns):
 
 workbook.save(file_path)
 workbook.close()
+Finishing_time = datetime.now()
 print("\n✅ Results successfully written to the Excel file.")
+print("\n✅ Starting time: {Starting_time}")
+print("\n✅ Finishing time: {Finishing_time}")
