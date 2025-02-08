@@ -78,7 +78,7 @@ for code_idx, code_col in enumerate(code_columns):
     # Reset Ollama context at the start of each column
     system_prompt = "Forget all previous instructions and start fresh."
     reset_data = {
-        "model": "llama3.3:70b",
+        "model": "llama3.2",
         "prompt": system_prompt,
         "temperature": 0.0,
         "stream": False
