@@ -107,7 +107,7 @@ for code_idx, code_col in enumerate(code_columns):
         print(f"\n🤖 Ollama prompt: {prompt}\n")
 
         data = {
-            "model": "llama3",  # Adjust to your installed model (check with `ollama list`)
+            "model": "llama3.3:70b",  # Adjust to your installed model (check with `ollama list`)
             "prompt": prompt,
             "stream": False
         }
