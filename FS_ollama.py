@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 
 Starting_time = datetime.now()
+print(f"\n✅ Starting time: '{Starting_time}'")
 
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
@@ -124,7 +125,7 @@ for code_idx, code_col in enumerate(code_columns):
         print(f"\n🤖 Ollama prompt: {prompt}\n")
 
         data = {
-            "model": "llama3",  # Adjust to your installed model (check with `ollama list`)
+            "model": "llama3.2",  # Adjust to your installed model (check with `ollama list`)
             "prompt": prompt,
             "temperature":0.0,
             "stream": False
@@ -183,5 +184,5 @@ workbook.save(file_path)
 workbook.close()
 Finishing_time = datetime.now()
 print("\n✅ Results successfully written to the Excel file.")
-print("\n✅ Starting time: {Starting_time}")
-print("\n✅ Finishing time: {Finishing_time}")
+print(f"\n✅ Starting time: '{Starting_time}'")
+print(f"\n✅ Finishing time: '{Finishing_time}'")
