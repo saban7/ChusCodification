@@ -131,7 +131,7 @@ for code_idx, code_col in enumerate(code_columns):
         print(f"\n🤖 Ollama prompt: {prompt}\n")
 
         data = {
-            "model": "llama3",
+            "model": "llama3.3:70b",
             "prompt": prompt,
             "stream": False
         }
