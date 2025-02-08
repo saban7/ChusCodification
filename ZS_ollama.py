@@ -8,8 +8,11 @@ from bs4 import BeautifulSoup
 from difflib import get_close_matches
 import time
 from datetime import datetime
+import os
+os.environ["OLLAMA_USE_CUDA"] = "1"  
 
 Starting_time = datetime.now()
+print(f"\n✅ Starting time: '{Starting_time}'")
 
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
@@ -176,12 +179,12 @@ for code_idx, code_col in enumerate(code_columns):
             attempt += 1
             time.sleep(5)  # Wait 5s before retrying if failed
 
-        time.sleep(1)  # Wait 1s between requests
+#        time.sleep(1)  # Wait 1s between requests
 
 # 🔹 Ensure the workbook is properly saved and closed at the end
 workbook.save(file_path)
 workbook.close()
 Finishing_time = datetime.now()
 print("\n✅ Results successfully written to the Excel file.")
-print("\n✅ Starting time: {Starting_time}")
-print("\n✅ Finishing time: {Finishing_time}")
+print(f"\n✅ Starting time: '{Starting_time}'")
+print(f"\n✅ Finishing time: '{Finishing_time}'")
