@@ -63,7 +63,7 @@ def generate_summary(last_descriptions, last_contents):
     )
     
     data = {
-        "model": "llama3.3:70b",
+        "model": "llama3.2",
         "prompt": summary_prompt,
         "temperature": 0.0,
         "stream": False
@@ -100,7 +100,7 @@ for code_idx, code_col in enumerate(code_columns):
 
     # Reset Ollama context
     requests.post(API_URL, headers={'Content-Type': 'application/json'}, json={
-        "model": "llama3.3:70b",
+        "model": "llama3.2",
         "prompt": "Forget all previous instructions and start fresh.",
         "temperature": 0.0,
         "stream": False
@@ -135,7 +135,7 @@ for code_idx, code_col in enumerate(code_columns):
         )
 
         data = {
-            "model": "llama3.3:70b",
+            "model": "llama3.2",
             "prompt": prompt,
             "temperature": 0.0,
             "stream": False
