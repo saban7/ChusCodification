@@ -1,3 +1,4 @@
+# Codification script: Context (Ollama)
 import time
 import pandas as pd
 import requests
@@ -5,6 +6,7 @@ import json
 from openpyxl import load_workbook
 from bs4 import BeautifulSoup
 from difflib import get_close_matches
+import time
 from datetime import datetime
 
 Starting_time = datetime.now()
@@ -32,8 +34,8 @@ examples_mapping = {
     for row in codes_sheet.iloc[1:].values
 }
 
-# Get codes from "Codification" sheet (Columns F, G, H → indices 5,6,7)
-code_columns = list(range(5, 18))
+# Get codes from "Codification" sheet (Columns F, G → indices 5,6)
+code_columns = list(range(6, 19))
 codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
 
 # Function to find best match
@@ -51,31 +53,6 @@ fixed_codes = {
 def clean_html(html_text):
     return BeautifulSoup(str(html_text), "html.parser").get_text()
 
-# 🔹 Generate summary using Llama
-def generate_summary(last_descriptions, last_contents):
-    if not last_descriptions and not last_contents:
-        return "No previous context available."
-    
-    summary_text = " | ".join(last_descriptions + last_contents)
-    
-    summary_prompt = (
-        f"Summarize the following descriptions and content in a concise manner: {summary_text}"
-    )
-    
-    data = {
-        "model": "llama3.2",
-        "prompt": summary_prompt,
-        "temperature": 0.0,
-        "stream": False
-    }
-    
-    response = requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=data)
-    
-    if response.status_code == 200:
-        return response.json().get("response", "No summary available.").strip()
-    else:
-        return "Error generating summary."
-
 # Load workbook for writing results
 workbook = load_workbook(file_path)
 if "Context" not in workbook.sheetnames:
@@ -83,11 +60,10 @@ if "Context" not in workbook.sheetnames:
 
 workbook_sheet = workbook["Context"]
 
+# Define column indices
 description_col = 3  # Column D
 content_col = 4      # Column E
-
-last_descriptions = []
-last_contents = []
+summary_col = 5      # Column F
 
 # Process each code column
 for code_idx, code_col in enumerate(code_columns):
@@ -97,65 +73,120 @@ for code_idx, code_col in enumerate(code_columns):
     code_example = examples_mapping.get(matched_code_name, "No example available")
 
     print(f"\n🚀 Processing Code: '{matched_code_name}'")
+    print(f"📝 Definition: {code_definition}")
+    print(f"📚 Example: {code_example}\n")
 
-    # Reset Ollama context
-    requests.post(API_URL, headers={'Content-Type': 'application/json'}, json={
-        "model": "llama3.2",
-        "prompt": "Forget all previous instructions and start fresh.",
+    # Reset Ollama context at the start of each column
+    system_prompt = "Forget all previous instructions and start fresh."
+    reset_data = {
+        "model": "llama3.3:70b",
+        "prompt": system_prompt,
         "temperature": 0.0,
         "stream": False
-    })
+    }
 
+    # Send a system reset request to Ollama before starting a new column
+    requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=reset_data)
+    print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
+    
+    # Process each row
     for i in range(1, 284):
         item_description = codif_sheet.iloc[i, description_col]
         item_content = codif_sheet.iloc[i, content_col]
+        item_previous_summary = codif_sheet.iloc[i, summary_col]
+        
+        has_description = pd.notna(item_description)
+        has_content = pd.notna(item_content)
 
-        if pd.notna(item_description):
-            last_descriptions.append(clean_html(item_description))
-            if len(last_descriptions) > 3:
-                last_descriptions.pop(0)
-        
-        if pd.notna(item_content):
-            last_contents.append(clean_html(item_content))
-            if len(last_contents) > 3:
-                last_contents.pop(0)
-        
-        summary = generate_summary(last_descriptions, last_contents)
 
-        text_for_prompt = f"Item description: {clean_html(item_description)}. Item content: {clean_html(item_content)}" if pd.notna(item_description) and pd.notna(item_content) else clean_html(item_description or item_content)
-        
+        # Build the text for the prompt conditionally
+        if has_description and has_content:
+            text_for_prompt = f"Item description: {clean_html(item_description)}. Item content: {clean_html(item_content)}"
+        elif has_description:
+            text_for_prompt = f"{clean_html(item_description)}"
+        elif has_content:
+            text_for_prompt = f"{clean_html(item_content)}"
+        else:
+            text_for_prompt = None
+
+        if text_for_prompt is None:
+            print(f"\n❌ Row {i+1}: Both item description and content are empty. Skipping.")
+            workbook_sheet.cell(row=i+1, column=code_col+1, value="Empty")
+            workbook.save(file_path)  # 🔹 Force saving
+            continue
+
+        # 🔹 Construct the optimized prompt
         prompt = (
             f"Please review the provided text and code it based on the construct: `{matched_code_name}`. "
             f"The definition of this construct is `{code_definition}`. "
-            f"Here you have some examples `{code_example}`. "
-            f"Here you have the context: `{summary}` "
+            f"Here you have some examples: `{code_example}`. "
+            f"For additional context, here is a summary of the preceding content: `{item_previous_summary}`. "
             f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
             f"or a '0' if it does not. Your response should only be '1' or '0'. "
             f"Text: `{text_for_prompt}`"
         )
 
+        print(f"\n🤖 Ollama prompt: {prompt}\n")
+
         data = {
-            "model": "llama3.2",
+            "model": "llama3.3:70b",  # Adjust to your installed model (check with `ollama list`)
             "prompt": prompt,
-            "temperature": 0.0,
+            "temperature":0.0,
             "stream": False
         }
 
         attempt = 0
         while attempt < MAX_RETRIES:
             try:
-                response = requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=data)
-                response.raise_for_status()
-                api_response = response.json().get("response", "").strip()
-                result_value = api_response[0] if api_response and api_response[0] in ("1", "0") else "Error"
-                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
-                workbook.save(file_path)
-                break
-            except Exception as e:
-                print(f"⚠️ Error processing row {i+1}: {e}")
-            attempt += 1
-            time.sleep(5)
+                # Send the request to the local API
+                response = requests.post(
+                    API_URL,
+                    headers={'Content-Type': 'application/json'},
+                    json=data
+                )
+                response.raise_for_status()  # Raise an error for HTTP issues
 
+                response_json = response.json()
+                api_response = response_json.get("response", "").strip()
+
+                # Validate response format
+                if api_response and api_response[0] in ("1", "0"):
+                    result_value = api_response[0]
+                else:
+                    result_value = "Error"
+
+                print(f"📝 Row {i+1} - Code '{matched_code_name}': API response: {result_value}")
+
+                # Write the result to the Excel sheet
+                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
+                workbook.save(file_path)  # 🔹 Ensure changes are written to the file
+                print(f"✅ Successfully written to Excel at row {i+1}, column {code_col+1}")
+
+                break  # Exit the retry loop if successful
+
+            except requests.exceptions.RequestException as req_err:
+                print(f"❌ API Connection Failed for row {i+1}, code '{matched_code_name}': {req_err}")
+                result_value = "Error"
+
+            except json.JSONDecodeError as json_err:
+                print(f"⚠️ JSON Decode Error for row {i+1}, code '{matched_code_name}': {json_err}")
+                result_value = "Error"
+
+            # Write error result after all retries fail
+            if attempt == MAX_RETRIES - 1:
+                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
+                workbook.save(file_path)  # 🔹 Save on error
+                print(f"🚨 Max retries reached for row {i+1}. Moving to next item.")
+
+            attempt += 1
+            time.sleep(5)  # Wait 5s before retrying if failed
+
+        time.sleep(1)  # Wait 1s between requests
+
+# 🔹 Ensure the workbook is properly saved and closed at the end
 workbook.save(file_path)
 workbook.close()
-print("\n✅ Processing complete.")
+Finishing_time = datetime.now()
+print("\n✅ Results successfully written to the Excel file.")
+print(f"\n✅ Starting time: '{Starting_time}'")
+print(f"\n✅ Finishing time: '{Finishing_time}'")
