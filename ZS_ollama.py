@@ -18,7 +18,7 @@ MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
 
 # Load the Excel file
-file_path = '/home/msaban/ChusCodification/Codebook.xlsx'
+file_path = '/home/msaban/ChusCodification/new_codebook.xlsx'
 
 # Load sheets using pandas
 codes_sheet = pd.read_excel(file_path, sheet_name="Codes", header=None)
@@ -37,7 +37,7 @@ examples_mapping = {
 }
 
 # Get codes from "Codification" sheet (Columns F, G → indices 5,6)
-code_columns = list(range(5, 18))
+code_columns = list(range(6, 19))
 codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
 
 # Function to find best match
@@ -97,42 +97,33 @@ for code_idx, code_col in enumerate(code_columns):
 
     # Process each row
     for i in range(1, 284):
+        
+        ils_title = codif_sheet.iloc[i, title_col]
+        item_name = codif_sheet.iloc[i, name_col]
+        item_category = codif_sheet.iloc[i, category_col]
         item_description = codif_sheet.iloc[i, description_col]
-        item_content = codif_sheet.iloc[i, content_col]
+        item_embded_description = codif_sheet.iloc[i, embded_col]
 
         has_description = pd.notna(item_description)
-        has_content = pd.notna(item_content)
 
         # Build the text for the prompt conditionally    title_col category_col   name_col   description_col      embded_col
-        if has_description and has_content:
-            text_for_prompt =   f"Ils title: {clean_html(title_col)}. \n"
-                                f"Item category: {clean_html(category_col)}. \n"
-                                f"Item name: {clean_html(name_col)}. \n"
-                                f"task description: {clean_html(description_col)}. \n"
-                                f"Embedded artifact Description: {clean_html(embded_col)} \n"
+        
+        text_for_prompt =   (
+                                f"Ils title: {clean_html(ils_title)}. \n"
+                                f"Item category: {clean_html(item_category)}. \n"
+                                f"Item name: {clean_html(item_name)}. \n"
+                                f"task description: {clean_html(item_description)}. \n"
+                                f"Embedded artifact Description: {clean_html(item_embded_description)} \n"
+                            )
 
-        elif has_description:
-            text_for_prompt = f"{clean_html(item_description)}"
-        elif has_content:
-            text_for_prompt = f"{clean_html(item_content)}"
-        else:
-            text_for_prompt = None
-
-        if text_for_prompt is None:
-            print(f"\n❌ Row {i+1}: Both item description and content are empty. Skipping.")
-            workbook_sheet.cell(row=i+1, column=code_col+1, value="Empty")
-            workbook.save(file_path)  # 🔹 Force saving
-            continue
 
         # 🔹 Construct the optimized prompt
         prompt = (
             f"Please review the provided text and code it based on the construct: `{matched_code_name}`. "
             f"The definition of this construct is `{code_definition}`. "
             f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
-            f"or a '0' if it does not. Your response should only be '1' or '0'. "
+            f"or a '0' if it does not. Your response should only be '1' or '0'. \n"
             f"Text: `{text_for_prompt}`"
-
-
 
         )
 
