@@ -8,15 +8,17 @@ from bs4 import BeautifulSoup
 from difflib import get_close_matches
 import time
 from datetime import datetime
+import os
+os.environ["OLLAMA_USE_CUDA"] = "1"  
 
 Starting_time = datetime.now()
-print(f"\n✅ Starting time: '{Starting_time}'")
+print(f"\n⏰ Starting time: '{Starting_time}'")
 
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
 
 # Load the Excel file
-file_path = '/home/msaban/ChusCodification/Codebook.xlsx'
+file_path = '/home/msaban/ChusCodification/new_codebook.xlsx'
 
 # Load sheets using pandas
 codes_sheet = pd.read_excel(file_path, sheet_name="Codes", header=None)
@@ -35,7 +37,7 @@ examples_mapping = {
 }
 
 # Get codes from "Codification" sheet (Columns F, G → indices 5,6)
-code_columns = list(range(5, 18))
+code_columns = list(range(6, 19))
 codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
 
 # Function to find best match
@@ -60,9 +62,13 @@ if "Few" not in workbook.sheetnames:
 
 workbook_sheet = workbook["Few"]
 
-# Define column indices
+# Define column indices  title_col category_col   name_col   description_col      embded_col
+title_col = 0
+category_col = 1
+name_col = 2
 description_col = 3  # Column D
-content_col = 4      # Column E
+embded_col = 4      # Column E
+
 
 # Process each code column
 for code_idx, code_col in enumerate(code_columns):
@@ -74,6 +80,7 @@ for code_idx, code_col in enumerate(code_columns):
     print(f"\n🚀 Processing Code: '{matched_code_name}'")
     print(f"📝 Definition: {code_definition}")
     print(f"📚 Example: {code_example}\n")
+
 
     # Reset Ollama context at the start of each column
     system_prompt = "Forget all previous instructions and start fresh."
@@ -87,39 +94,38 @@ for code_idx, code_col in enumerate(code_columns):
     # Send a system reset request to Ollama before starting a new column
     requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=reset_data)
     print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
-    
+
     # Process each row
     for i in range(1, 284):
+        
+        ils_title = codif_sheet.iloc[i, title_col]
+        item_name = codif_sheet.iloc[i, name_col]
+        item_category = codif_sheet.iloc[i, category_col]
         item_description = codif_sheet.iloc[i, description_col]
-        item_content = codif_sheet.iloc[i, content_col]
+        item_embded_description = codif_sheet.iloc[i, embded_col]
 
         has_description = pd.notna(item_description)
-        has_content = pd.notna(item_content)
 
-        # Build the text for the prompt conditionally
-        if has_description and has_content:
-            text_for_prompt = f"Item description: {clean_html(item_description)}. Item content: {clean_html(item_content)}"
-        elif has_description:
-            text_for_prompt = f"{clean_html(item_description)}"
-        elif has_content:
-            text_for_prompt = f"{clean_html(item_content)}"
-        else:
-            text_for_prompt = None
+        # Build the text for the prompt conditionally    title_col category_col   name_col   description_col      embded_col
+        
+        text_for_prompt =   (
+                                f"Ils title: {clean_html(ils_title)}. \n"
+                                f"Item category: {clean_html(item_category)}. \n"
+                                f"Item name: {clean_html(item_name)}. \n"
+                                f"task description: {clean_html(item_description)}. \n"
+                                f"Embedded artifact Description: {clean_html(item_embded_description)} \n"
+                            )
 
-        if text_for_prompt is None:
-            print(f"\n❌ Row {i+1}: Both item description and content are empty. Skipping.")
-            workbook_sheet.cell(row=i+1, column=code_col+1, value="Empty")
-            workbook.save(file_path)  # 🔹 Force saving
-            continue
 
         # 🔹 Construct the optimized prompt
         prompt = (
             f"Please review the provided text and code it based on the construct: `{matched_code_name}`. "
             f"The definition of this construct is `{code_definition}`. "
-            f"Here you have some examples `{code_example}`. "
+            f"Here you have some examples: `{code_example}`. "
             f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
-            f"or a '0' if it does not. Your response should only be '1' or '0'. "
+            f"or a '0' if it does not. Your response should only be '1' or '0'. \n"
             f"Text: `{text_for_prompt}`"
+
         )
 
         print(f"\n🤖 Ollama prompt: {prompt}\n")
@@ -157,6 +163,7 @@ for code_idx, code_col in enumerate(code_columns):
                 workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
                 workbook.save(file_path)  # 🔹 Ensure changes are written to the file
                 print(f"✅ Successfully written to Excel at row {i+1}, column {code_col+1}")
+                print(f"\n⏳ Starting time: '{Starting_time}'")
 
                 break  # Exit the retry loop if successful
 
@@ -177,12 +184,12 @@ for code_idx, code_col in enumerate(code_columns):
             attempt += 1
             time.sleep(5)  # Wait 5s before retrying if failed
 
-        time.sleep(1)  # Wait 1s between requests
+#        time.sleep(1)  # Wait 1s between requests
 
 # 🔹 Ensure the workbook is properly saved and closed at the end
 workbook.save(file_path)
 workbook.close()
 Finishing_time = datetime.now()
 print("\n✅ Results successfully written to the Excel file.")
-print(f"\n✅ Starting time: '{Starting_time}'")
-print(f"\n✅ Finishing time: '{Finishing_time}'")
+print(f"\n⏳ Starting time: '{Starting_time}'")
+print(f"\n⌛ Finishing time: '{Finishing_time}'")
