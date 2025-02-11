@@ -62,9 +62,13 @@ if "Zero" not in workbook.sheetnames:
 
 workbook_sheet = workbook["Zero"]
 
-# Define column indices
+# Define column indices  title_col category_col   name_col   description_col      embded_col
+title_col = 0
+category_col = 1
+name_col = 2
 description_col = 3  # Column D
-content_col = 4      # Column E
+embded_col = 4      # Column E
+
 
 # Process each code column
 for code_idx, code_col in enumerate(code_columns):
@@ -99,9 +103,14 @@ for code_idx, code_col in enumerate(code_columns):
         has_description = pd.notna(item_description)
         has_content = pd.notna(item_content)
 
-        # Build the text for the prompt conditionally
+        # Build the text for the prompt conditionally    title_col category_col   name_col   description_col      embded_col
         if has_description and has_content:
-            text_for_prompt = f"Item description: {clean_html(item_description)}. Item content: {clean_html(item_content)}"
+            text_for_prompt =   f"Ils title: {clean_html(title_col)}. \n"
+                                f"Item category: {clean_html(category_col)}. \n"
+                                f"Item name: {clean_html(name_col)}. \n"
+                                f"task description: {clean_html(description_col)}. \n"
+                                f"Embedded artifact Description: {clean_html(embded_col)} \n"
+
         elif has_description:
             text_for_prompt = f"{clean_html(item_description)}"
         elif has_content:
@@ -122,6 +131,9 @@ for code_idx, code_col in enumerate(code_columns):
             f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
             f"or a '0' if it does not. Your response should only be '1' or '0'. "
             f"Text: `{text_for_prompt}`"
+
+
+
         )
 
         print(f"\n🤖 Ollama prompt: {prompt}\n")
