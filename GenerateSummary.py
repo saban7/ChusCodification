@@ -12,7 +12,7 @@ print(f"\n✅ Starting time: '{Starting_time}'")
 API_URL = "http://localhost:11434/api/generate"
 
 # Load the Excel file
-file_path = '/home/msaban/ChusCodification/new_odebook.xlsx'
+file_path = '/home/msaban/ChusCodification/new_codebook.xlsx'
 
 # Load the Context sheet
 codif_sheet = pd.read_excel(file_path, sheet_name="Context", header=None)
