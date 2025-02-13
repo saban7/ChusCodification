@@ -18,7 +18,7 @@ MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
 
 # Load the Excel file
-file_path = '/home/msaban/ChusCodification/new_codebook.xlsx'
+file_path = '/home/msaban/ChusCodification/small_codebook.xlsx'
 
 # Load sheets using pandas
 codes_sheet = pd.read_excel(file_path, sheet_name="Codes", header=None)
@@ -109,9 +109,9 @@ for code_idx, code_col in enumerate(code_columns):
         # Build the text for the prompt conditionally    title_col category_col   name_col   description_col      embded_col
         
         text_for_prompt =   (
-                                f"Ils title: {clean_html(ils_title)}. \n"
-                                f"Item category: {clean_html(item_category)}. \n"
-                                f"Item name: {clean_html(item_name)}. \n"
+                                #f"Ils title: {clean_html(ils_title)}. \n"
+                                #f"Item category: {clean_html(item_category)}. \n"
+                                #f"Item name: {clean_html(item_name)}. \n"
                                 f"task description: {clean_html(item_description)}. \n"
                                 f"Embedded artifact Description: {clean_html(item_embded_description)} \n"
                             )
