@@ -78,11 +78,10 @@ for code_idx, code_col in enumerate(code_columns):
     print(f"📝 Definition: {code_definition}\n")
 
     # Reset Ollama context at the start of each column
+    system_prompt = "Forget all previous instructions and start fresh."
     reset_data = {
         "model": "llama3.3:70b",
-        "messages": [
-            {"role": "system", "content": "Forget all previous instructions and start fresh."}
-        ],
+        "prompt": system_prompt,
         "temperature": 0.0,
         "stream": False
     }
@@ -97,29 +96,33 @@ for code_idx, code_col in enumerate(code_columns):
         item_description = codif_sheet.iloc[i, description_col]
         item_embded_description = codif_sheet.iloc[i, embded_col]
 
-        messages = [
-            {"role": "system", "content": (
-                f"You are a qualitative coding expert. You are assessing the student engagement of learning activities "
-                f"created by teachers in an inquiry-based learning digital platform. These activities may have different "
-                f"media content including text and embedded artifacts (e.g., images, videos, apps, labs). "
-                f"Please review the provided activity description and code it based on the construct: `{matched_code_name}`. "
-                f"The definition of this construct is `{code_definition}`. "
-                f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
-                f"or a '0' if it does not. Your response should only be '1' or '0'."
-            )},
-            {"role": "user", "content": (
-                f"Learning activity:\n"
-                f"Lesson title: {clean_html(ils_title)}. \n"
-                f"Activity category: {clean_html(item_category)}.\n"
-                f"Activity name: {clean_html(item_name)}. \n"
-                f"Activity description: {clean_html(item_description)}. \n"
-                f"Embedded media content description: {clean_html(item_embded_description)} \n"
-            )}
-        ]
+        # Construct the user message
+        user_message = (
+            f"Learning activity:\n"
+            f"Lesson title: {clean_html(ils_title)}. \n"
+            f"Activity category: {clean_html(item_category)}.\n"
+            f"Activity name: {clean_html(item_name)}. \n"
+            f"Activity description: {clean_html(item_description)}. \n"
+            f"Embedded media content description: {clean_html(item_embded_description)} \n"
+        )
+
+        # Construct the system message
+        system_message = (
+            f"You are a qualitative coding expert. You are assessing the student engagement of learning activities "
+            f"created by teachers in an inquiry-based learning digital platform. These activities may have different "
+            f"media content including text and embedded artifacts (e.g., images, videos, apps, labs). "
+            f"Please review the provided activity description and code it based on the construct: `{matched_code_name}`. "
+            f"The definition of this construct is `{code_definition}`. "
+            f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
+            f"or a '0' if it does not. Your response should only be '1' or '0'. \n"
+        )
+
+        print(f"\n🤖 Ollama System Message: {system_message}\n")
+        print(f"📝 Ollama User Message: {user_message}\n")
 
         data = {
             "model": "llama3.3:70b",
-            "messages": messages,
+            "prompt": system_message + "\n" + user_message,
             "temperature": 0.0,
             "stream": False
         }
