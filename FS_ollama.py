@@ -37,7 +37,7 @@ examples_mapping = {
 }
 
 # Get codes from "Codification" sheet (Columns F, G → indices 5,6)
-code_columns = list(range(6, 19))
+code_columns = list(range(18, 19))
 codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
 
 # Function to find best match
@@ -96,7 +96,7 @@ for code_idx, code_col in enumerate(code_columns):
     print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
 
     # Process each row
-    for i in range(1, 284):
+    for i in range(1, 38):
         
         ils_title = codif_sheet.iloc[i, title_col]
         item_name = codif_sheet.iloc[i, name_col]
