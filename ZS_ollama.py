@@ -1,88 +1,164 @@
-# Codification script: Zero shots (Ollama)
-import time
-import pandas as pd
-import requests
-import json
-from openpyxl import load_workbook
-from bs4 import BeautifulSoup
-from difflib import get_close_matches
-import time
-from datetime import datetime
+"""
+Codification script: Zero shots (Ollama)
+
+This script reads activity data from an Excel file and uses a local LLM service
+(Ollama) to assign a '0' or '1' code for each activity based on a specific code's definition.
+Results are then written back to the same Excel file.
+"""
+
 import os
-os.environ["OLLAMA_USE_CUDA"] = "1"  
+import time
+import json
+import requests
+import pandas as pd
+from bs4 import BeautifulSoup
+from datetime import datetime
+from openpyxl import load_workbook
+from difflib import get_close_matches
 
-Starting_time = datetime.now()
-print(f"\n✅ Starting time: '{Starting_time}'")
+# Enable GPU usage for Ollama (if supported)
+os.environ["OLLAMA_USE_CUDA"] = "1"
 
+# Constants
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
+EXCEL_FILE_PATH = "/home/msaban/ChusCodification/small_codebook.xlsx"
 
-# Load the Excel file
-file_path = '/home/msaban/ChusCodification/small_codebook.xlsx'
+def main():
+    start_time = datetime.now()
+    print(f"\n✅ Script started at: {start_time}")
 
-# Load sheets using pandas
-codes_sheet = pd.read_excel(file_path, sheet_name="Codes", header=None)
-codif_sheet = pd.read_excel(file_path, sheet_name="Zero", header=None)
+    # Load the Excel file
+    codes_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Codes", header=None)
+    codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Zero", header=None)
 
-# Extract code definitions
-definitions_mapping = {
-    str(row[0]).strip().lower(): str(row[1]).strip() if not pd.isna(row[1]) else "No definition available"
-    for row in codes_sheet.iloc[1:].values  # Skip header row
-}
+    # Build dictionaries for definitions and examples from the "Codes" sheet
+    definitions_mapping = {
+        str(row[0]).strip().lower(): (str(row[1]).strip() if not pd.isna(row[1]) else "No definition available")
+        for row in codes_sheet.iloc[1:].values  # Skip header
+    }
+    examples_mapping = {
+        str(row[0]).strip().lower(): (str(row[2]).strip() if not pd.isna(row[2]) else "No example available")
+        for row in codes_sheet.iloc[1:].values
+    }
 
-# Extract examples
-examples_mapping = {
-    str(row[0]).strip().lower(): str(row[2]).strip() if not pd.isna(row[2]) else "No example available"
-    for row in codes_sheet.iloc[1:].values
-}
+    # Identify the columns that contain codes in the "Zero" sheet (F, G → indices 5,6 in Excel → Python 0-based)
+    code_columns = list(range(6, 7))  # Adjust if more columns should be processed
+    # Extract the raw code names from the first row of these columns
+    codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
 
-# Get codes from "Codification" sheet (Columns F, G → indices 5,6)
-code_columns = list(range(6, 7))
-codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
+    # Create a helper mapping from "raw_code" to "best_matched_code"
+    available_codes = list(definitions_mapping.keys())
+    fixed_codes = {raw: find_best_match(raw, available_codes) or raw for raw in codes}
 
-# Function to find best match
+    # Prepare to write results into the "Zero" sheet
+    workbook = load_workbook(EXCEL_FILE_PATH)
+    if "Zero" not in workbook.sheetnames:
+        raise ValueError("❌ Sheet 'Zero' not found in the Excel file!")
+    workbook_sheet = workbook["Zero"]
+
+    # Column indices (0-based in pandas)
+    title_col = 0       # Lesson title
+    category_col = 1    # Activity category
+    name_col = 2        # Activity name
+    description_col = 3 # Activity description
+    embed_col = 4       # Embedded media description
+
+    # Process each code column
+    for code_col in code_columns:
+        raw_code_name = str(codif_sheet.iloc[0, code_col]).strip().lower()
+        matched_code_name = fixed_codes.get(raw_code_name, raw_code_name)
+        code_definition = definitions_mapping.get(matched_code_name, "No definition available")
+        code_example = examples_mapping.get(matched_code_name, "No example available")
+
+        print(f"\n🚀 Processing Code: '{matched_code_name}'")
+        print(f"📝 Definition: {code_definition}")
+        print(f"📚 Example: {code_example}\n")
+
+        # Reset Ollama context at the start of each column
+        reset_ollama_context()
+
+        print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
+
+        # Loop through rows to generate and record codes
+        for i in range(1, 38):  # Adjust range as needed
+            # Read relevant information from the row
+            lesson_title = codif_sheet.iloc[i, title_col]
+            activity_category = codif_sheet.iloc[i, category_col]
+            activity_name = codif_sheet.iloc[i, name_col]
+            activity_description = codif_sheet.iloc[i, description_col]
+            embed_description = codif_sheet.iloc[i, embed_col]
+
+            # Construct the user text
+            user_message = (
+                f"Learning activity:\n"
+                f"Lesson title: {clean_html(lesson_title)}.\n"
+                f"Activity category: {clean_html(activity_category)}.\n"
+                f"Activity name: {clean_html(activity_name)}.\n"
+                f"Activity description: {clean_html(activity_description)}.\n"
+                f"Embedded media content description: {clean_html(embed_description)}.\n"
+            )
+
+            # Construct the system message
+            system_message = (
+                f"You are a qualitative coding expert. You are assessing the student engagement of learning activities "
+                f"created by teachers in an inquiry-based learning digital platform. These activities may have different "
+                f"media content including text and embedded artifacts (e.g., images, videos, apps, labs). "
+                f"Please review the provided activity description and code it based on the construct: '{matched_code_name}'. "
+                f"The definition of this construct is '{code_definition}'. "
+                f"After reviewing the text, assign a code of '1' if you believe the text exemplifies '{matched_code_name}', "
+                f"or '0' if it does not. Your response should only be '1' or '0'."
+            )
+
+            print(f"\n🤖 Ollama System Message: {system_message}\n")
+            print(f"📝 Ollama User Message: {user_message}\n")
+
+            # Prepare data payload for the request
+            data_payload = {
+                "model": "llama3.3:70b",
+                "prompt": system_message + "\n" + user_message,
+                "temperature": 0.0,
+                "stream": False
+            }
+
+            # Attempt to get a valid response from Ollama
+            result_value = send_to_ollama(data_payload, i, matched_code_name, workbook, workbook_sheet, code_col)
+            
+            print(f"📝 Row {i+1} - Code '{matched_code_name}': API response: {result_value}")
+            # Write result to Excel
+            workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
+            workbook.save(EXCEL_FILE_PATH)
+
+            # Optional: A brief pause between requests
+            # time.sleep(1)
+
+    # Finalize
+    workbook.save(EXCEL_FILE_PATH)
+    workbook.close()
+
+    end_time = datetime.now()
+    print("\n✅ Results successfully written to the Excel file.")
+    print(f"✅ Script started at: {start_time}")
+    print(f"✅ Script finished at: {end_time}")
+
 def find_best_match(code_name, available_codes):
+    """
+    Return the single closest match for 'code_name' from 'available_codes', 
+    or None if no match exceeds the cutoff.
+    """
     matches = get_close_matches(code_name, available_codes, n=1, cutoff=0.7)
     return matches[0] if matches else None
 
-# Fix codes mapping
-fixed_codes = {
-    raw_code: find_best_match(raw_code, definitions_mapping.keys()) or raw_code
-    for raw_code in codes
-}
-
-# 🔹 Clean HTML content
 def clean_html(html_text):
+    """
+    Remove any HTML tags from the input text.
+    """
     return BeautifulSoup(str(html_text), "html.parser").get_text()
 
-# Load workbook for writing results
-workbook = load_workbook(file_path)
-if "Zero" not in workbook.sheetnames:
-    raise ValueError("❌ Sheet 'Coding' not found in the Excel file!")
-
-workbook_sheet = workbook["Zero"]
-
-# Define column indices  title_col category_col   name_col   description_col      embded_col
-title_col = 0
-category_col = 1
-name_col = 2
-description_col = 3  # Column D
-embded_col = 4      # Column E
-
-
-# Process each code column
-for code_idx, code_col in enumerate(code_columns):
-    raw_code_name = str(codif_sheet.iloc[0, code_col]).strip().lower()
-    matched_code_name = fixed_codes.get(raw_code_name, raw_code_name)
-    code_definition = definitions_mapping.get(matched_code_name, "No definition available")
-    code_example = examples_mapping.get(matched_code_name, "No example available")
-
-    print(f"\n🚀 Processing Code: '{matched_code_name}'")
-    print(f"📝 Definition: {code_definition}")
-    print(f"📚 Example: {code_example}\n")
-
-
-    # Reset Ollama context at the start of each column
+def reset_ollama_context():
+    """
+    Send a system reset request to Ollama, clearing any previous context.
+    """
     system_prompt = "Forget all previous instructions and start fresh."
     reset_data = {
         "model": "llama3.3:70b",
@@ -90,116 +166,45 @@ for code_idx, code_col in enumerate(code_columns):
         "temperature": 0.0,
         "stream": False
     }
+    try:
+        requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=reset_data)
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Failed to reset Ollama context: {e}")
 
-    # Send a system reset request to Ollama before starting a new column
-    requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=reset_data)
-    print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
+def send_to_ollama(data_payload, row_idx, code_name, workbook, sheet, code_col):
+    """
+    Send 'data_payload' to the Ollama API, retrying up to MAX_RETRIES times.
+    Returns a single-character response ('0' or '1') or 'Error' if unsuccessful.
+    """
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=data_payload)
+            response.raise_for_status()
+            response_json = response.json()
+            api_response = response_json.get("response", "").strip()
 
-    # Process each row
-    for i in range(1, 38):
-        
-        ils_title = codif_sheet.iloc[i, title_col]
-        item_name = codif_sheet.iloc[i, name_col]
-        item_category = codif_sheet.iloc[i, category_col]
-        item_description = codif_sheet.iloc[i, description_col]
-        item_embded_description = codif_sheet.iloc[i, embded_col]
+            # Validate Ollama response
+            if api_response and api_response[0] in ("1", "0"):
+                return api_response[0]  # Only store the first character
+            else:
+                # If Ollama returns something unexpected, log it
+                print(f"⚠️ Unexpected response format for row {row_idx+1}, code '{code_name}': {api_response}")
+                return "Error"
 
-        has_description = pd.notna(item_description)
+        except requests.exceptions.RequestException as req_err:
+            print(f"❌ API connection error for row {row_idx+1}, code '{code_name}': {req_err}")
+        except json.JSONDecodeError as json_err:
+            print(f"⚠️ JSON decode error for row {row_idx+1}, code '{code_name}': {json_err}")
 
-        # Build the text for the prompt conditionally    title_col category_col   name_col   description_col      embded_col
-        
-        text_for_prompt =   (
-                                #f"Ils title: {clean_html(ils_title)}. \n"
-                                #f"Item category: {clean_html(item_category)}. \n"
-                                #f"Item name: {clean_html(item_name)}. \n"
-                                f"task description: {clean_html(item_description)}. \n"
-                                f"Embedded artifact Description: {clean_html(item_embded_description)} \n"
-                            )
+        # After a failed attempt, wait and retry
+        if attempt < MAX_RETRIES - 1:
+            time.sleep(5)
+        else:
+            # On final failure, write "Error" to Excel
+            sheet.cell(row=row_idx+1, column=code_col+1, value="Error")
+            workbook.save(EXCEL_FILE_PATH)
+            print(f"🚨 Max retries reached for row {row_idx+1}. Moving to next item.")
+            return "Error"
 
-
-       user_message =   (
-                            f"Learning activity:\n"
-                            f"Lesson title: {clean_html(ils_title)}. \n"
-                            f"Activity category: {clean_html(item_category)}.\n"
-                            f"Activity name: {clean_html(item_name)}. \n"
-                            f"Activity description: {clean_html(item_description)}. \n"
-                            f"Embedded media content description: {clean_html(item_embded_description)} \n"
-                        )
-
-        # Construct the system message
-        system_message =    (
-                                f"You are a qualitative coding expert. You are assessing the student engagement of learning activities "
-                                f"created by teachers in an inquiry-based learning digital platform. These activities may have different "
-                                f"media content including text and embedded artifacts (e.g., images, videos, apps, labs). "
-                                f"Please review the provided activity description and code it based on the construct: `{matched_code_name}`. "
-                                f"The definition of this construct is `{code_definition}`. "
-                                f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
-                                f"or a '0' if it does not. Your response should only be '1' or '0'. \n"
-                            )
-
-        print(f"\n🤖 Ollama System Message: {system_message}\n")
-        print(f"📝 Ollama User Message: {user_message}\n")
-
-        data = {
-            "model": "llama3.3:70b",
-            "prompt": system_message + "\n" + user_message,
-            "temperature": 0.0,
-            "stream": False
-        }
-
-
-        attempt = 0
-        while attempt < MAX_RETRIES:
-            try:
-                # Send the request to the local API
-                response = requests.post(
-                    API_URL,
-                    headers={'Content-Type': 'application/json'},
-                    json=data
-                )
-                response.raise_for_status()  # Raise an error for HTTP issues
-
-                response_json = response.json()
-                api_response = response_json.get("response", "").strip()
-
-                # Validate response format
-                if api_response and api_response[0] in ("1", "0"):
-                    result_value = api_response[0]
-                else:
-                    result_value = "Error"
-
-                print(f"📝 Row {i+1} - Code '{matched_code_name}': API response: {result_value}")
-
-                # Write the result to the Excel sheet
-                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
-                workbook.save(file_path)  # 🔹 Ensure changes are written to the file
-                print(f"✅ Successfully written to Excel at row {i+1}, column {code_col+1}")
-
-                break  # Exit the retry loop if successful
-
-            except requests.exceptions.RequestException as req_err:
-                print(f"❌ API Connection Failed for row {i+1}, code '{matched_code_name}': {req_err}")
-                result_value = "Error"
-
-            except json.JSONDecodeError as json_err:
-                print(f"⚠️ JSON Decode Error for row {i+1}, code '{matched_code_name}': {json_err}")
-                result_value = "Error"
-
-            # Write error result after all retries fail
-            if attempt == MAX_RETRIES - 1:
-                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
-                workbook.save(file_path)  # 🔹 Save on error
-                print(f"🚨 Max retries reached for row {i+1}. Moving to next item.")
-
-            attempt += 1
-            time.sleep(5)  # Wait 5s before retrying if failed
-
-#        time.sleep(1)  # Wait 1s between requests
-
-# 🔹 Ensure the workbook is properly saved and closed at the end
-workbook.save(file_path)
-workbook.close()
-Finishing_time = datetime.now()
-print("\n✅ Results successfully written to the Excel file.")
-print(f"\n✅ Starting time: '{Starting_time}'")
-print(f"\n✅ Finishing time: '{Finishing_time}'")
+if __name__ == "__main__":
+    main()
