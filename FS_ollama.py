@@ -36,8 +36,8 @@ examples_mapping = {
     for row in codes_sheet.iloc[1:].values
 }
 
-# Get codes from "Codification" sheet (Columns F, G → indices 5,6)
-code_columns = list(range(18, 19))
+# Get codes from "Codification" sheet 6 19 (Columns F, G → indices 5,6)
+code_columns = list(range(6, 7))
 codes = [str(codif_sheet.iloc[0, col]).strip().lower() for col in code_columns]
 
 # Function to find best match
