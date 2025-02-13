@@ -1,3 +1,4 @@
+# Codification script: Zero shots (Ollama)
 import time
 import pandas as pd
 import requests
@@ -5,9 +6,9 @@ import json
 from openpyxl import load_workbook
 from bs4 import BeautifulSoup
 from difflib import get_close_matches
+import time
 from datetime import datetime
 import os
-
 os.environ["OLLAMA_USE_CUDA"] = "1"  
 
 Starting_time = datetime.now()
@@ -57,25 +58,29 @@ def clean_html(html_text):
 # Load workbook for writing results
 workbook = load_workbook(file_path)
 if "Zero" not in workbook.sheetnames:
-    raise ValueError("❌ Sheet 'Zero' not found in the Excel file!")
+    raise ValueError("❌ Sheet 'Coding' not found in the Excel file!")
 
 workbook_sheet = workbook["Zero"]
 
-# Define column indices
+# Define column indices  title_col category_col   name_col   description_col      embded_col
 title_col = 0
 category_col = 1
 name_col = 2
 description_col = 3  # Column D
 embded_col = 4      # Column E
 
+
 # Process each code column
 for code_idx, code_col in enumerate(code_columns):
     raw_code_name = str(codif_sheet.iloc[0, code_col]).strip().lower()
     matched_code_name = fixed_codes.get(raw_code_name, raw_code_name)
     code_definition = definitions_mapping.get(matched_code_name, "No definition available")
+    code_example = examples_mapping.get(matched_code_name, "No example available")
 
     print(f"\n🚀 Processing Code: '{matched_code_name}'")
-    print(f"📝 Definition: {code_definition}\n")
+    print(f"📝 Definition: {code_definition}")
+    print(f"📚 Example: {code_example}\n")
+
 
     # Reset Ollama context at the start of each column
     system_prompt = "Forget all previous instructions and start fresh."
@@ -85,19 +90,34 @@ for code_idx, code_col in enumerate(code_columns):
         "temperature": 0.0,
         "stream": False
     }
+
+    # Send a system reset request to Ollama before starting a new column
     requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=reset_data)
     print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
 
     # Process each row
     for i in range(1, 38):
+        
         ils_title = codif_sheet.iloc[i, title_col]
         item_name = codif_sheet.iloc[i, name_col]
         item_category = codif_sheet.iloc[i, category_col]
         item_description = codif_sheet.iloc[i, description_col]
         item_embded_description = codif_sheet.iloc[i, embded_col]
 
-        # Construct the user message
-        user_message = (
+        has_description = pd.notna(item_description)
+
+        # Build the text for the prompt conditionally    title_col category_col   name_col   description_col      embded_col
+        
+        text_for_prompt =   (
+                                #f"Ils title: {clean_html(ils_title)}. \n"
+                                #f"Item category: {clean_html(item_category)}. \n"
+                                #f"Item name: {clean_html(item_name)}. \n"
+                                f"task description: {clean_html(item_description)}. \n"
+                                f"Embedded artifact Description: {clean_html(item_embded_description)} \n"
+                            )
+
+
+       user_message = (
             f"Learning activity:\n"
             f"Lesson title: {clean_html(ils_title)}. \n"
             f"Activity category: {clean_html(item_category)}.\n"
@@ -127,26 +147,56 @@ for code_idx, code_col in enumerate(code_columns):
             "stream": False
         }
 
+
         attempt = 0
         while attempt < MAX_RETRIES:
             try:
-                response = requests.post(API_URL, headers={'Content-Type': 'application/json'}, json=data)
-                response.raise_for_status()
+                # Send the request to the local API
+                response = requests.post(
+                    API_URL,
+                    headers={'Content-Type': 'application/json'},
+                    json=data
+                )
+                response.raise_for_status()  # Raise an error for HTTP issues
+
                 response_json = response.json()
                 api_response = response_json.get("response", "").strip()
-                result_value = api_response[0] if api_response and api_response[0] in ("1", "0") else "Error"
-                print(f"📝 Row {i+1} - Code '{matched_code_name}': API response: {result_value}")
-                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
-                workbook.save(file_path)
-                break
-            except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
-                print(f"❌ Error for row {i+1}, code '{matched_code_name}': {e}")
-                if attempt == MAX_RETRIES - 1:
-                    workbook_sheet.cell(row=i+1, column=code_col+1, value="Error")
-                    workbook.save(file_path)
-            attempt += 1
-            time.sleep(5)
 
+                # Validate response format
+                if api_response and api_response[0] in ("1", "0"):
+                    result_value = api_response[0]
+                else:
+                    result_value = "Error"
+
+                print(f"📝 Row {i+1} - Code '{matched_code_name}': API response: {result_value}")
+
+                # Write the result to the Excel sheet
+                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
+                workbook.save(file_path)  # 🔹 Ensure changes are written to the file
+                print(f"✅ Successfully written to Excel at row {i+1}, column {code_col+1}")
+
+                break  # Exit the retry loop if successful
+
+            except requests.exceptions.RequestException as req_err:
+                print(f"❌ API Connection Failed for row {i+1}, code '{matched_code_name}': {req_err}")
+                result_value = "Error"
+
+            except json.JSONDecodeError as json_err:
+                print(f"⚠️ JSON Decode Error for row {i+1}, code '{matched_code_name}': {json_err}")
+                result_value = "Error"
+
+            # Write error result after all retries fail
+            if attempt == MAX_RETRIES - 1:
+                workbook_sheet.cell(row=i+1, column=code_col+1, value=result_value)
+                workbook.save(file_path)  # 🔹 Save on error
+                print(f"🚨 Max retries reached for row {i+1}. Moving to next item.")
+
+            attempt += 1
+            time.sleep(5)  # Wait 5s before retrying if failed
+
+#        time.sleep(1)  # Wait 1s between requests
+
+# 🔹 Ensure the workbook is properly saved and closed at the end
 workbook.save(file_path)
 workbook.close()
 Finishing_time = datetime.now()
