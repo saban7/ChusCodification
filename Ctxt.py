@@ -22,7 +22,7 @@ def main():
 
     # Load the Excel file
     codes_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Codes", header=None)
-    codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Zero", header=None)
+    codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Context", header=None)
 
     # Build dictionaries for definitions and examples from the "Codes" sheet
     definitions_mapping = {
@@ -46,8 +46,8 @@ def main():
     # Prepare to write results into the "Zero" sheet
     workbook = load_workbook(EXCEL_FILE_PATH)
     if "Zero" not in workbook.sheetnames:
-        raise ValueError("❌ Sheet 'Zero' not found in the Excel file!")
-    workbook_sheet = workbook["Zero"]
+        raise ValueError("❌ Sheet 'Few' not found in the Excel file!")
+    workbook_sheet = workbook["Context"]
 
     # Column indices (0-based in pandas)
     title_col = 0       # Lesson title
@@ -55,7 +55,7 @@ def main():
     name_col = 2        # Activity name
     description_col = 3 # Activity description
     embed_col = 4       # Embedded media description
-
+    summary_col = 5
     # Process each code column
     for code_col in code_columns:
         raw_code_name = str(codif_sheet.iloc[0, code_col]).strip().lower()
@@ -80,7 +80,7 @@ def main():
             activity_name = codif_sheet.iloc[i, name_col]
             activity_description = codif_sheet.iloc[i, description_col]
             embed_description = codif_sheet.iloc[i, embed_col]
-
+            item_previous_summary = codif_sheet.iloc[i, summary_col]
             # Construct the user text
             user_message = (
                 f"Learning activity:\n"
@@ -89,6 +89,7 @@ def main():
                 f"Activity name: {clean_html(activity_name)}.\n"
                 f"Activity description: {clean_html(activity_description)}.\n"
                 f"Embedded media content description: {clean_html(embed_description)}.\n"
+		f"For additional context, here is a summary of the preceding content: `{item_previous_summary}`. \n"
             )
 
             # Construct the system message
@@ -98,6 +99,7 @@ def main():
                 f"media content including text and embedded artifacts (e.g., images, videos, apps, labs). "
                 f"Please review the provided activity description and code it based on the construct: '{matched_code_name}'. "
                 f"The definition of this construct is '{code_definition}'. "
+ 		f"Here you have some examples: '{code_example}'. "
                 f"After reviewing the text, assign a code of '1' if you believe the text exemplifies '{matched_code_name}', "
                 f"or '0' if it does not. Your response should only be '1' or '0'."
             )
