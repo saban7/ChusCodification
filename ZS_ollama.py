@@ -1,11 +1,3 @@
-"""
-Codification script: Zero shots (Ollama)
-
-This script reads activity data from an Excel file and uses a local LLM service
-(Ollama) to assign a '0' or '1' code for each activity based on a specific code's definition.
-Results are then written back to the same Excel file.
-"""
-
 import os
 import time
 import json
