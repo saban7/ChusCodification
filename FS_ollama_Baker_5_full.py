@@ -14,7 +14,7 @@ os.environ["OLLAMA_USE_CUDA"] = "1"
 # Constants
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
-EXCEL_FILE_PATH = "/home/msaban/ChusCodification/2designs_codebook.xlsx"
+EXCEL_FILE_PATH = "/home/msaban/ChusCodification/Zero3.xlsx"
 
 def main():
     start_time = datetime.now()
@@ -22,7 +22,7 @@ def main():
 
     # Load the Excel file
     codes_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Codes", header=None)
-    codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Few", header=None)
+    codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Zero", header=None)
 
     # Build dictionaries for definitions and examples from the "Codes" sheet
     definitions_mapping = {
@@ -45,9 +45,9 @@ def main():
 
     # Prepare to write results into the "Zero" sheet
     workbook = load_workbook(EXCEL_FILE_PATH)
-    if "Few" not in workbook.sheetnames:
-        raise ValueError("❌ Sheet 'Few' not found in the Excel file!")
-    workbook_sheet = workbook["Few"]
+    if "Zero" not in workbook.sheetnames:
+        raise ValueError("❌ Sheet 'Zero' not found in the Excel file!")
+    workbook_sheet = workbook["Zero"]
 
     # Column indices (0-based in pandas)
     title_col = 0       # Lesson title
