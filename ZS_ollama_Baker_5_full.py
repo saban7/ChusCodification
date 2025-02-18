@@ -88,10 +88,10 @@ def main():
 
 
             prompt = (
-                f"Please review the provided text and code it based on the construct: `{matched_code_name}`. "
-                f"The definition of this construct is `{code_definition}`. "
+                f"Please review the provided text and code it based on the construct: `{matched_code_name}`.\n"
+                f"The definition of this construct is `{code_definition}`. \n"
                 f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, "
-                f"or a '0' if it does not. Your response should only be '1' or '0'. "
+                f"or a '0' if it does not. Your response should only be '1' or '0'. \n\n"
                 f"Text: `{text_for_prompt}`"
             )
 
