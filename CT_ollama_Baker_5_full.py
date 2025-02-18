@@ -46,9 +46,9 @@ def main():
 
     # Prepare to write results into the "Context" sheet
     workbook = load_workbook(EXCEL_FILE_PATH)
-    if "Context" not in workbook.sheetnames:
-        raise ValueError("❌ Sheet 'Context' not found in the Excel file!")
-    workbook_sheet = workbook["Context"]
+    if "Codification" not in workbook.sheetnames:
+        raise ValueError("❌ Sheet 'Codification' not found in the Excel file!")
+    workbook_sheet = workbook["Codification"]
 
     # Column indices (0-based in pandas)
     title_col = 0       # Lesson title
