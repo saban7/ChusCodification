@@ -1,0 +1,9 @@
+Prompt baker using 5 itmes:
+
+ f"Learning activity:\n"
+                f"Lesson title: {clean_html(lesson_title)}.\n"
+                f"Activity category: {clean_html(activity_category)}.\n"
+                f"Activity name: {clean_html(activity_name)}.\n"
+                f"Activity description: {clean_html(activity_description)}.\n"
+                f"Embedded media content description: {clean_html(embed_description)}.\n"
+            
