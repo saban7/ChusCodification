@@ -67,11 +67,6 @@ def main():
         print(f"📝 Definition: {code_definition}")
         print(f"📚 Example: {code_example}\n")
 
-        # Reset Ollama context at the start of each column
-        reset_ollama_context()
-
-        print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
-
         # Loop through rows to generate and record codes
         for i in range(1, 90):  # Adjust range as needed
             # Read relevant information from the row
@@ -120,6 +115,9 @@ def main():
 
             # Optional: A brief pause between requests
             # time.sleep(1)
+            # Reset Ollama context at the start of each column
+            reset_ollama_context()
+            print(f"🧹 Ollama context cleared before processing column {code_col} ({matched_code_name})")
 
     # Finalize
     workbook.save(EXCEL_FILE_PATH)
