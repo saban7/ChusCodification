@@ -22,7 +22,7 @@ def main():
 
     # Load the Excel file
     codes_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Codes", header=None)
-    codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Zero", header=None)
+    codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Codification", header=None)
 
     # Build dictionaries for definitions and examples from the "Codes" sheet
     definitions_mapping = {
@@ -45,9 +45,9 @@ def main():
 
     # Prepare to write results into the "Zero" sheet
     workbook = load_workbook(EXCEL_FILE_PATH)
-    if "Zero" not in workbook.sheetnames:
-        raise ValueError("❌ Sheet 'Zero' not found in the Excel file!")
-    workbook_sheet = workbook["Zero"]
+    if "Codification" not in workbook.sheetnames:
+        raise ValueError("❌ Sheet 'Codification' not found in the Excel file!")
+    workbook_sheet = workbook["Codification"]
 
     # Column indices (0-based in pandas)
     title_col = 0       # Lesson title
