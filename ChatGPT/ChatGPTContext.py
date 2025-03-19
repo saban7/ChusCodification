@@ -68,6 +68,7 @@ category_col = 1    # Activity category
 name_col = 2        # Activity name
 description_col = 3 # Activity description
 embed_col = 4       # Embedded media description
+summary_col = 5
 
 
 # Process each code column
@@ -90,6 +91,7 @@ for code_idx, code_col in enumerate(code_columns):
         activity_name = codif_sheet.iloc[i, name_col]
         activity_description = codif_sheet.iloc[i, description_col]
         embed_description = codif_sheet.iloc[i, embed_col]
+	previous_summary = codif_sheet.iloc[i, summary_col]
         # Build the text for the prompt conditionally    title_col category_col   name_col   description_col      embded_col
         
        # Construct the text for the prompt
@@ -105,6 +107,7 @@ for code_idx, code_col in enumerate(code_columns):
             f"These activities may have different media content including text and embedded artifacts (e.g., images, videos, apps, labs). Please review the provided activity description and code it based on the construct: `{matched_code_name}`. \n"
             f"The definition of this construct is `{code_definition}`.  \n"
             f"Here you have some examples: `{code_example}`. \n"
+            f"For additional context, here is a summary of the 3 previous items: `{previous_summary}`. \n"    
             f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, or a '0' if it does not.\n"
             f"Your response should only be '1' or '0', without the quotes. Do NOT provide any explanation or text after the 0 or 1. It is very important that your response is only a 0 or 1.\n\n"
             f"Text: `{text_for_prompt}`"
