@@ -18,7 +18,7 @@ API_URL = "https://api.openai.com/v1/chat/completions"
 API_KEY = "" #API KEY
 
 # Load the Excel file
-file_path = '/home/msaban/ChusCodification/ChatGPT/FS2_GPT.xlsx'
+file_path = '/home/msaban/ChusCodification/ChatGPT/ZS1_GPT.xlsx'
 
 # Load sheets using pandas
 codes_sheet = pd.read_excel(file_path, sheet_name="Codes", header=None)
@@ -104,7 +104,6 @@ for code_idx, code_col in enumerate(code_columns):
             f"You are a qualitative coding expert. You are assessing the student engagement of learning activities created by teachers in a inquiry-based learning digital platform. \n"
             f"These activities may have different media content including text and embedded artifacts (e.g., images, videos, apps, labs). Please review the provided activity description and code it based on the construct: `{matched_code_name}`. \n"
             f"The definition of this construct is `{code_definition}`.  \n"
-            f"Here you have some examples: `{code_example}`. \n"
             f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, or a '0' if it does not.\n"
             f"Your response should only be '1' or '0', without the quotes. Do NOT provide any explanation or text after the 0 or 1. It is very important that your response is only a 0 or 1.\n\n"
             f"Text: `{text_for_prompt}`"
