@@ -10,7 +10,7 @@ Starting_time = datetime.now()
 print(f"\n✅ Starting time: '{Starting_time}'")
 
 API_URL = "http://localhost:11434/api/generate"
-EXCEL_FILE_PATH = "/home/msaban/ChusCodification/Full_Codebook/Summary.xlsx"
+EXCEL_FILE_PATH = "/home/msaban/ChusCodification/Full/Summary.xlsx"
 
 # Load the Context sheet
 codif_sheet = pd.read_excel(EXCEL_FILE_PATH, sheet_name="Codification", header=None)

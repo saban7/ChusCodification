@@ -14,7 +14,7 @@ os.environ["OLLAMA_USE_CUDA"] = "1"
 # Constants
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
-EXCEL_FILE_PATH = "/home/msaban/ChusCodification/Full_Codebook/Few.xlsx"
+EXCEL_FILE_PATH = "/home/msaban/ChusCodification/Full/Few.xlsx"
 
 def main():
     start_time = datetime.now()
