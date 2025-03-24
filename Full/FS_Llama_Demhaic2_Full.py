@@ -68,7 +68,7 @@ def main():
         print(f"📚 Example: {code_example}\n")
 
         # Loop through rows to generate and record codes
-        for i in range(1, 760):  # Adjust range as needed
+        for i in range(1, 758):  # Adjust range as needed
             # Read relevant information from the row
             lesson_title = codif_sheet.iloc[i, title_col]
             activity_category = codif_sheet.iloc[i, category_col]
