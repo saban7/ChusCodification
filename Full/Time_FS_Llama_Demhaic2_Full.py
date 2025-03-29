@@ -14,7 +14,7 @@ os.environ["OLLAMA_USE_CUDA"] = "1"
 # Constants
 MAX_RETRIES = 3
 API_URL = "http://localhost:11434/api/generate"
-EXCEL_FILE_PATH = "/home/msaban/ChusCodification/Full/Test.xlsx"
+EXCEL_FILE_PATH = "/home/msaban/ChusCodification/Full/Few.xlsx"
 
 def main():
     start_time = datetime.now()
@@ -90,6 +90,7 @@ def main():
                 f"You are a qualitative coding expert. You are assessing the student engagement of learning activities created by teachers in a inquiry-based learning digital platform. \n"
                 f"These activities may have different media content including text and embedded artifacts (e.g., images, videos, apps, labs). Please review the provided activity description and code it based on the construct: `{matched_code_name}`. \n"
                 f"The definition of this construct is `{code_definition}`.  \n"
+		f"Here you have some examples: `{code_example}`. \n"
                 f"After reviewing the text, assign a code of '1' if you believe the text exemplifies `{matched_code_name}`, or a '0' if it does not. Your response should only be '1' or '0'.\n\n"
                 f"Text: `{text_for_prompt}`"
             )
