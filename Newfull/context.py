@@ -129,6 +129,7 @@ def main():
     print("\n✅ Results successfully written to the Excel file.")
     print(f"✅ Script started at: {start_time}")
     print(f"✅ Script finished at: {end_time}")
+    print(time_array)
 
 def find_best_match(code_name, available_codes):
     """
